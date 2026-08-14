@@ -1,4 +1,4 @@
-import string
+import string                                                                       # It gives us ready-made character groups like:
 
 
 class CharTokenizer:

@@ -1,4 +1,3 @@
-"""Download DeepMind Mathematics modules and pack them into uint16 shards."""
 import ast, json
 from pathlib import Path
 import numpy as np
@@ -10,7 +9,7 @@ REPO = "deepmind/math_dataset"
 REVISION = "refs/convert/parquet"
 
 # train split = easy | medium | hard, concatenated in that order
-PER_DIFFICULTY = 666_666
+PER_DIFFICULTY = 666_666                                                # each difficulty level contains 666,666 examples.
 DIFFICULTY = {
     "easy":   (0, PER_DIFFICULTY),
     "medium": (PER_DIFFICULTY, 2 * PER_DIFFICULTY),
