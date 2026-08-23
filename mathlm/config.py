@@ -19,8 +19,8 @@ class Config:
     # optimisation
     micro_batch_size: int = 96
     grad_accum_steps: int = 2
-    learning_rate: float = 3e-4
-    min_lr: float = 3e-5
+    learning_rate: float = 6e-4
+    min_lr: float = 6e-5
     warmup_steps: int = 300
     max_steps: int = 7386  # from benchmark: 134,460 tok/s x 45 min / 49,152
     weight_decay: float = 0.1

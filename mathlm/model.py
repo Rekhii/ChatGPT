@@ -118,7 +118,7 @@ class GPT(nn.Module):
 
         return logits, loss
 
-    def configure_optimizers(self, weight_decay, lr, betas):
+    def configure_optimizers(self, weight_decay, lr, betas):   # AdamW optimizer
         params = [p for p in self.parameters() if p.requires_grad]
         decay = [p for p in params if p.dim() >= 2]
         no_decay = [p for p in params if p.dim() < 2]
