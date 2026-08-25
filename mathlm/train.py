@@ -36,13 +36,16 @@ def estimate_val(model, data, cfg):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--max_minutes", type=float, default=50.0)
+    ap.add_argument("--run_dir", default=None, help="overrides cfg.run_dir")
+    ap.add_argument("--resume", action="store_true", help="continue from last.pt")
     args = ap.parse_args()
 
     cfg = Config()
     torch.manual_seed(cfg.seed)
     torch.backends.cuda.matmul.allow_tf32 = True
 
-    run_dir = Path(cfg.run_dir)
+    # a smoke test must never write into a real run's directory
+    run_dir = Path(args.run_dir or cfg.run_dir)
     (run_dir / "ckpt").mkdir(parents=True, exist_ok=True)
     cfg.save(run_dir / "config.json")
 
@@ -54,17 +57,28 @@ def main():
     opt = raw_model.configure_optimizers(
         cfg.weight_decay, cfg.learning_rate, (cfg.beta1, cfg.beta2)
     )
+
+    start_step, history = 0, []
+    last_path = run_dir / "ckpt" / "last.pt"
+    if args.resume and last_path.exists():
+        ck = torch.load(last_path, map_location=cfg.device)
+        raw_model.load_state_dict(ck["model"])
+        opt.load_state_dict(ck["optimizer"])
+        start_step = ck["step"] + 1
+        history = ck.get("history", [])
+        print(f"resumed at step {start_step}")
+
     model = torch.compile(raw_model) if cfg.compile else raw_model
 
     tokens_per_step = cfg.micro_batch_size * cfg.block_size * cfg.grad_accum_steps
     deadline = time.time() + args.max_minutes * 60
     t0 = time.perf_counter()
-    history = []
+    step = start_step - 1
     print(f"{cfg.max_steps} steps, {tokens_per_step:,} tok/step, "
           f"{args.max_minutes:.0f} min budget")
 
     model.train()
-    for step in range(cfg.max_steps):
+    for step in range(start_step, cfg.max_steps):
         for g in opt.param_groups:
             g["lr"] = lr_at(step, cfg)
 
@@ -88,9 +102,16 @@ def main():
         if step > 0 and step % cfg.eval_interval == 0:
             vl = estimate_val(model, val_data, cfg)
             history.append({"step": step, "train_loss": train_loss, "val_loss": vl})
-            torch.save({"model": raw_model.state_dict(), "step": step,
-                        "config": vars(cfg)}, run_dir / "ckpt" / f"step_{step:06d}.pt")
             print(f"  >> val loss {vl:.4f}")
+
+            # weights only: evaluate.py sweeps these, keep them small
+            torch.save({"model": raw_model.state_dict(), "step": step,
+                        "config": vars(cfg)},
+                       run_dir / "ckpt" / f"step_{step:06d}.pt")
+            # rolling resume point, includes optimizer state
+            torch.save({"model": raw_model.state_dict(), "optimizer": opt.state_dict(),
+                        "step": step, "config": vars(cfg), "history": history},
+                       last_path)
 
         if time.time() > deadline:
             print(f"stopping at step {step}: time budget")
