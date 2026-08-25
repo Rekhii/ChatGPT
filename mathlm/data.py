@@ -74,7 +74,7 @@ def build(out_dir, modules=MODULES, difficulties=("easy", "medium"),
             ids = tok.encode_pair(q, a)
             n_ans = len(a) + 1                      # answer characters + EOS
             m = [0] * (len(ids) - n_ans) + [1] * n_ans
-            tokens.extend(ids)
+            tokens.extend(ids)     # Append token and ids into one array that's all
             mask.extend(m)
         counts[module] = len(pairs)
 

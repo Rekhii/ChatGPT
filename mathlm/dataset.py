@@ -56,9 +56,11 @@ sends them to CPU/GPU
         x = torch.from_numpy(np.stack([
             self.tokens[i : i + self.block_size] for i in starts
         ]).astype(np.int64))
+
         y = torch.from_numpy(np.stack([
             self.tokens[i + 1 : i + 1 + self.block_size] for i in starts
         ]).astype(np.int64))
+
         m = torch.from_numpy(np.stack([
             self.mask[i + 1 : i + 1 + self.block_size] for i in starts
         ]).astype(np.float32))
