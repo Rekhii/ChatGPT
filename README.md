@@ -2,7 +2,7 @@
 
 # MathLLM
 
-A 18.9M parameter character-level transformer trained from scratch on the DeepMind Mathematics Dataset. 45 minutes on one laptop GPU. No `transformers`, no `lightning`, no config framework. The tokenizer, data pipeline, model, training loop and evaluation harness are all hand-written.
+An 18.9M parameter character-level transformer trained from scratch on the DeepMind Mathematics Dataset. 45 minutes on one laptop GPU. No `transformers`, no `lightning`, no config framework. The tokenizer, data pipeline, model, training loop and evaluation harness are all hand-written.
 
 ---
 
@@ -64,8 +64,6 @@ Three choices worth explaining:
 
 **Weight tying.** The embedding maps 98 characters into 512 dimensions on the way in, and the same matrix transposed maps back on the way out. Saves parameters, usually helps a little.
 
-![Architecture](docs/assets/arch.png)
-
 ---
 
 ## Training
@@ -75,14 +73,14 @@ Three choices worth explaining:
 | Steps | 7,386 (schedule completed, not truncated) |
 | Tokens | 363M, about 17 passes over 21M |
 | Wall clock | 45.2 minutes |
-| Hardware | 1x RTX 4060 , 8.59 GB, sm_89 |
+| Hardware | 1x RTX 4060 Laptop, 8.59 GB, sm_89 |
 | Throughput | 134,460 tok/s sustained |
 | Effective batch | 49,152 tokens (96 x 256 x 2 accumulation) |
 | Optimiser | AdamW fused, lr 6e-4 cosine to 6e-5, 300 step warmup |
 | Precision | bfloat16 autocast, `torch.compile` |
 | Loss | cross entropy masked to answer tokens only |
 
-Only 14.9% of tokens are answer tokens. The loss is masked so the model is not rewarded for autocompleting question phrasing. Predicting the question back to itself teaches nothing and just dilutes the gradient.
+Only about 14% of tokens are answer tokens. The loss is masked so the model is not rewarded for autocompleting question phrasing. Predicting the question back to itself teaches nothing and just dilutes the gradient.
 
 The step count came from measurement, not a guess. A 15 minute throughput benchmark run to thermal equilibrium (86-87C, SM clock stable at 1920-2100 MHz) gave 134,460 tok/s, and `max_steps` was set from that. Predicted 45 minutes, actual 45.2.
 
@@ -165,7 +163,7 @@ The fix was to stop padding at all. Group questions of similar length into the s
 
 There was a quieter version of the same problem upstream. Raw records from the dataset arrive double-encoded, as strings containing Python bytes literals. Without `ast.literal_eval(s).decode("utf-8").strip()` you end up training on the literal characters `b`, `'` and `\n` in every example. It trains perfectly happily. It just learns the wrong thing.
 
-Both sites are marked on the diagrams in `docs/diagrams/` so I do not repeat them.
+Both sites are marked on the diagrams in `docs/assets/` so I do not repeat them.
 
 ---
 
@@ -173,21 +171,25 @@ Both sites are marked on the diagrams in `docs/diagrams/` so I do not repeat the
 
 ```
 mathllm/
-  tokenizer.py     character vocabulary, encode and decode
+  __init__.py
   config.py        every hyperparameter, one file
+  tokenizer.py     character vocabulary, encode and decode
+  data.py          dataset download, cleaning, shard writing
   dataset.py       shard loading, batching, loss mask construction
   model.py         the transformer
-scripts/
-  preflight.py     sanity checks before committing to a long run
-  benchmark.py     sustained throughput measurement
   train.py         training loop
   evaluate.py      per-module accuracy
+scripts/
+  prepare_data.py  build the shards
+  preflight.py     sanity checks before committing to a long run
+  benchmark.py     sustained throughput measurement
   chat.py          interactive prompt
-  debug_gen.py     per-token probabilities, for when generation goes wrong
-  upload_hf.py     push to Hugging Face
 docs/
-  diagrams/        pipeline, architecture, inference, evaluation
+  assets/          header and architecture diagrams
 ```
+
+The library lives in `mathllm/`, the entry points in `scripts/`. `train.py` and
+`evaluate.py` sit in the package rather than `scripts/`, so they run as modules.
 
 ---
 
@@ -202,6 +204,10 @@ pip install -r requirements.txt
 PyTorch with CUDA is the only heavy dependency.
 
 ### Prepare data
+
+```bash
+python scripts/prepare_data.py
+```
 
 Downloads from Hugging Face, cleans the double-encoding, builds the character vocabulary, encodes, and writes shards. Runs once and takes a while.
 
@@ -226,7 +232,7 @@ Let it run at least ten minutes so the GPU reaches thermal equilibrium. It logs 
 ### Train
 
 ```bash
-python scripts/train.py
+python -m mathllm.train
 ```
 
 Checkpoints land in `ckpt/`. Keep all of them. Per-module accuracy across checkpoints is the most useful diagnostic in this project and you can only build it if the intermediate weights survive.
@@ -234,19 +240,23 @@ Checkpoints land in `ckpt/`. Keep all of them. Per-module accuracy across checkp
 ### Evaluate
 
 ```bash
-python scripts/evaluate.py --ckpt ckpt/final.pt
-python scripts/evaluate.py --all-checkpoints
+python -m mathllm.evaluate --ckpt ckpt/final.pt
+python -m mathllm.evaluate --all-checkpoints
 ```
 
 ### Generate
 
-The checkpoint is a raw `state_dict`, not a `transformers` model. You need `model.py`, `config.py` and `tokenizer.py`.
+```bash
+python scripts/chat.py --ckpt ckpt/final.pt
+```
+
+Or from code. The checkpoint is a raw `state_dict`, not a `transformers` model. You need `model.py`, `config.py` and `tokenizer.py`.
 
 ```python
 import torch
-from mathllm.config import Config
-from mathllm.model import GPT
-from mathllm.tokenizer import CharTokenizer
+from mathlm.config import Config
+from mathlm.model import GPT
+from mathlm.tokenizer import CharTokenizer
 
 cfg = Config(); cfg.compile = False
 tok = CharTokenizer()
