@@ -56,6 +56,8 @@ tokens -> token embedding + position embedding
        -> linear projection to vocabulary
 ```
 
+![Architecture](docs/assets/arch.png)
+
 Three choices worth explaining:
 
 **Character level, not BPE.** The model never sees "differentiate" as one unit, it sees `d`, `i`, `f`, `f`. This is wasteful of context and I would not choose it for a general text model. For maths it buys something real: every number is represented digit by digit, so the model has positional resolution over quantities that a subword vocabulary destroys. A tokenizer that maps `347` to a single token has thrown away the fact that the 3 is in the hundreds place.
@@ -132,6 +134,23 @@ Now compare that against what the tasks need:
 `calculus__differentiate` at 86.0% looks harder and is not. It is pattern rewriting: `a*x**n` becomes `a*n*x**(n-1)`. A fixed transformation on a parsed structure, well within twelve steps.
 
 `numbers__is_prime` is a different kind of problem. To know whether a number is prime you have to try candidate divisors and check each one, and how many you check depends on the input. There is no fixed-depth circuit that does this for arbitrary inputs. So the model does the only available thing, learns the base rate, and guesses.
+
+The two modules side by side over the eight checkpoints:
+
+| Step | `place_value` | `is_prime` |
+|---|---|---|
+| 1000 | 38.0% | 50.0% |
+| 2000 | 65.5% | 50.0% |
+| 3000 | 89.0% | 50.5% |
+| 4000 | 89.5% | 54.0% |
+| 5000 | 91.5% | 49.0% |
+| 6000 | 95.0% | 56.0% |
+| 7000 | 99.0% | 49.0% |
+| 7385 | 96.5% | 50.0% |
+
+Same data, same optimiser, same schedule, same number of gradient steps. The only
+thing that differs is the task. Overall accuracy over the same span went 11.9, 20.8,
+29.5, 32.6, 37.8, 40.8, 42.3, 43.5.
 
 `comparison__sort` at 85.5% and `numbers__gcd` at 33.5% make the same point from the other direction. Both operate on lists of integers. Sorting is comparison, which is shallow and parallel. GCD needs Euclid's algorithm, which is a loop.
 
@@ -235,33 +254,43 @@ Let it run at least ten minutes so the GPU reaches thermal equilibrium. It logs 
 python -m mathllm.train
 ```
 
-Checkpoints land in `ckpt/`. Keep all of them. Per-module accuracy across checkpoints is the most useful diagnostic in this project and you can only build it if the intermediate weights survive.
+`--max_minutes` caps wall clock directly, `--run_dir` sets the output folder, `--resume` continues from `last.pt`.
+
+Checkpoints land in `runs/<run_dir>/ckpt/`. Keep all of them. Per-module accuracy across checkpoints is the most useful diagnostic in this project and you can only build it if the intermediate weights survive.
+
+`step_*.pt` are weights only, about 76MB each. `final.pt` and `last.pt` also carry optimiser state so training can resume, which puts them at about 228MB.
 
 ### Evaluate
 
 ```bash
-python -m mathllm.evaluate --ckpt ckpt/final.pt
-python -m mathllm.evaluate --all-checkpoints
+python -m mathllm.evaluate                                   # sweeps every checkpoint
+python -m mathllm.evaluate --ckpt runs/run_001/ckpt/final.pt # one checkpoint
 ```
+
+Sweeping is the default. Results are written to `runs/<run_dir>/per_module_accuracy.json`.
 
 ### Generate
 
 ```bash
-python scripts/chat.py --ckpt ckpt/final.pt
+python scripts/chat.py
 ```
+
+It defaults to `runs/run_001/ckpt/final.pt`. Inside the prompt, `help` shows a sample
+question from each module and `test <module>` runs five held-out questions with the
+expected answer beside the generated one.
 
 Or from code. The checkpoint is a raw `state_dict`, not a `transformers` model. You need `model.py`, `config.py` and `tokenizer.py`.
 
 ```python
 import torch
-from mathlm.config import Config
-from mathlm.model import GPT
-from mathlm.tokenizer import CharTokenizer
+from mathllm.config import Config
+from mathllm.model import GPT
+from mathllm.tokenizer import CharTokenizer
 
 cfg = Config(); cfg.compile = False
 tok = CharTokenizer()
 model = GPT(cfg).to(cfg.device)
-model.load_state_dict(torch.load("final.pt", map_location=cfg.device)["model"])
+model.load_state_dict(torch.load("runs/run_001/ckpt/final.pt", map_location=cfg.device)["model"])
 model.eval()
 
 def ask(question, max_new_tokens=48):
