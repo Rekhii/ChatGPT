@@ -7,10 +7,13 @@ real training run will actually get, so max_steps is derived from that.
 import argparse
 import csv
 import subprocess
+import sys
 import time
 from pathlib import Path
 
 import torch
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from mathllm.config import Config
 from mathllm.model import GPT

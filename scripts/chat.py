@@ -7,14 +7,16 @@ sample questions drawn from the held-out eval set.
 import argparse
 import json
 import random
+import sys
 from pathlib import Path
 
 import torch
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from mathllm.config import Config
 from mathllm.model import GPT
 from mathllm.tokenizer import CharTokenizer
-
 
 @torch.no_grad()
 def answer(model, tok, cfg, question, max_new_tokens=48):
