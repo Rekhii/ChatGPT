@@ -1,4 +1,4 @@
-# mathlm/dataset.py
+# mathllm/dataset.py
 import numpy as np
 import torch
 from pathlib import Path

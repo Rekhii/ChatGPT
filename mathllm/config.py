@@ -1,4 +1,4 @@
-# mathlm/config.py
+# mathllm/config.py
 from dataclasses import dataclass, asdict
 import json
 

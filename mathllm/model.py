@@ -1,4 +1,4 @@
-# mathlm/model.py
+# mathllm/model.py
 import math
 import torch
 import torch.nn as nn

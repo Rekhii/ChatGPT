@@ -6,9 +6,9 @@ from pathlib import Path
 
 import torch
 
-from mathlm.config import Config
-from mathlm.model import GPT
-from mathlm.dataset import ShardDataset
+from mathllm.config import Config
+from mathllm.model import GPT
+from mathllm.dataset import ShardDataset
 
 
 def lr_at(step, cfg):

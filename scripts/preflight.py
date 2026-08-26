@@ -6,10 +6,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from mathlm.config import Config
-from mathlm.model import GPT
-from mathlm.dataset import ShardDataset
-from mathlm.tokenizer import CharTokenizer
+from mathllm.config import Config
+from mathllm.model import GPT
+from mathllm.dataset import ShardDataset
+from mathllm.tokenizer import CharTokenizer
 
 
 def check(name, passed, detail=""):

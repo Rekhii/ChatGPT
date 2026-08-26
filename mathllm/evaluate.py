@@ -5,9 +5,9 @@ from pathlib import Path
 
 import torch
 
-from mathlm.config import Config
-from mathlm.model import GPT
-from mathlm.tokenizer import CharTokenizer
+from mathllm.config import Config
+from mathllm.model import GPT
+from mathllm.tokenizer import CharTokenizer
 
 
 @torch.no_grad()

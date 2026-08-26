@@ -12,9 +12,9 @@ from pathlib import Path
 
 import torch
 
-from mathlm.config import Config
-from mathlm.model import GPT
-from mathlm.dataset import ShardDataset
+from mathllm.config import Config
+from mathllm.model import GPT
+from mathllm.dataset import ShardDataset
 
 
 def telemetry():
@@ -43,7 +43,7 @@ def train_steps(model, opt, data, cfg, micro_bs, accum, n_steps):
             tokens += x.numel()
         torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.grad_clip)
         opt.step()
-    torch.cuda.synchronize()
+    torch.cuda.synchronize()  # Wait until the GPU has completely finished all queued work.
     return tokens
 
 

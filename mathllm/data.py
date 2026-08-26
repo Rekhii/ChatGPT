@@ -3,7 +3,7 @@ from pathlib import Path
 import numpy as np
 import pyarrow.parquet as pq
 from huggingface_hub import hf_hub_download
-from mathlm.tokenizer import CharTokenizer
+from mathllm.tokenizer import CharTokenizer
 
 REPO = "deepmind/math_dataset"
 REVISION = "refs/convert/parquet"
