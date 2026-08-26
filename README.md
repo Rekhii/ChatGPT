@@ -75,7 +75,7 @@ Three choices worth explaining:
 | Steps | 7,386 (schedule completed, not truncated) |
 | Tokens | 363M, about 17 passes over 21M |
 | Wall clock | 45.2 minutes |
-| Hardware | 1x RTX 4060 Laptop, 8.59 GB, sm_89 |
+| Hardware | 1x RTX 4060 , 8.59 GB, sm_89 |
 | Throughput | 134,460 tok/s sustained |
 | Effective batch | 49,152 tokens (96 x 256 x 2 accumulation) |
 | Optimiser | AdamW fused, lr 6e-4 cosine to 6e-5, 300 step warmup |
